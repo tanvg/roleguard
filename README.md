@@ -18,38 +18,53 @@ The project runs entirely on local infrastructure: **LangGraph** orchestrates th
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     Multi-Agent Healthcare Pipeline                 │
-│                         (LangGraph + Llama 3)                       │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│   ┌──────────┐      ┌──────────────┐      ┌──────────┐             │
-│   │  Agent A │ ───► │  RoleGuard   │ ───► │  Agent B │             │
-│   │ (e.g.    │      │  Middleware  │      │ (e.g.    │             │
-│   │ Clinical)│      │  (HIPAA      │      │  Billing)│             │
-│   └──────────┘      │   filter)    │      └──────────┘             │
-│                     └──────┬───────┘                                │
-│                            │                                        │
-│                     ┌──────▼───────┐                                │
-│                     │   RoleLeak   │                                │
-│                     │  (benchmark) │                                │
-│                     │  measures    │                                │
-│                     │  leakage at  │                                │
-│                     │  boundary    │                                │
-│                     └──────────────┘                                │
-│                                                                     │
-├─────────────────────────────────────────────────────────────────────┤
-│   Data: Synthea synthetic patients  │  LLM: Ollama (llama3) local   │
-└─────────────────────────────────────────────────────────────────────┘
+                    ┌─────────────────────────┐
+                    │   Patient Data (FHIR)   │
+                    │  mCODE Breast Cancer    │
+                    └───────────┬─────────────┘
+                                │
+                                ▼
+                    ┌─────────────────────────┐
+                    │       RoleGuard         │
+                    │  (HIPAA role filter)    │
+                    └───────────┬─────────────┘
+                                │
+            ┌───────────────────┼───────────────────┐
+            │                   │                   │
+            ▼                   ▼                   ▼
+    ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+    │ Clinical Agent│   │Scheduling Agent│   │ Billing Agent │
+    │ (high trust)  │   │ (medium trust) │   │ (low trust)   │
+    └───────┬───────┘   └───────┬───────┘   └───────┬───────┘
+            │                   │                   │
+            └───────────────────┼───────────────────┘
+                                │
+                                ▼
+                    ┌─────────────────────────┐
+                    │        RoleLeak         │
+                    │  measures received vs.  │
+                    │   permitted per agent   │
+                    └─────────────────────────┘
 ```
 
 **Pipeline flow:**
 
-1. A clinical scenario is loaded from Synthea synthetic patient data.
-2. Specialized agents (defined in `agents/`) process the case in sequence or in parallel via a LangGraph state machine (`src/`).
-3. At each handoff between agents, **RoleGuard** inspects the outgoing message and removes or redacts fields the receiving agent's HIPAA role is not permitted to access.
-4. **RoleLeak** runs in parallel (or in ablation mode without RoleGuard) to score how much PHI crosses each boundary—quantifying leakage before and after filtering.
-5. Results are written to `data/results/` for analysis.
+- Each agent requests information from RoleGuard
+- RoleGuard checks the requesting agent's role
+- RoleGuard returns ONLY permitted information to that agent
+- **Clinical agent** (high trust): sees diagnosis, medication, procedures, lab results
+- **Scheduling agent** (medium trust): sees only department, appointment time, clinician id
+- **Billing agent** (low trust): sees only procedure code, insurance id
+- **RoleLeak** measures what each agent receives vs what it should get
+
+## Dataset
+
+- **Source:** mCODE STU1 Synthetic Breast Cancer Records (MITRE Corporation)
+- **Total patients:** 196 (180 female, 16 male)
+- **Diagnosis:** Malignant neoplasm of breast
+- **Procedures:** Chemotherapy, radiation therapy, biopsy, lumpectomy
+- **Format:** FHIR R4 JSON
+- **Download:** https://confluence.hl7.org/display/COD/mCODE+Test+Data
 
 ## Setup Instructions
 
@@ -102,12 +117,18 @@ ollama list
 # Expected: llama3:latest
 ```
 
-### 5. Obtain Synthea synthetic patient data
+### 5. Obtain the Synthea synthetic patient data
 
 Download or generate Synthea FHIR/CSV exports and place scenario files in `data/scenarios/`. Synthea produces fully synthetic patients with no real PHI, making it safe for privacy research.
 
 - Synthea project: https://github.com/synthetichealth/synthea
 - Place one scenario per file (e.g., `data/scenarios/patient_001.json`)
+
+For this project:
+Download the mCODE STU1 breast cancer dataset from:
+https://confluence.hl7.org/display/COD/mCODE+Test+Data
+
+Place the extracted FHIR files in `data/scenarios/all_patients/`
 
 ### 6. Verify the environment
 
