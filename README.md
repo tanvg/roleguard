@@ -4,7 +4,7 @@ Privacy-preserving multi-agent LLM pipelines for healthcare. RoleGuard studies h
 
 ## Project Overview
 
-Healthcare organizations are increasingly adopting multi-agent LLM systems—where a triage agent, diagnostic agent, billing agent, and others collaborate on patient cases. Each agent may only be authorized to see a subset of protected health information (PHI) under HIPAA's minimum necessary standard. Without explicit controls, agents can inadvertently leak PHI across role boundaries during message passing.
+Healthcare organizations are increasingly adopting multi-agent LLM systems—where a clinical retrieval agent, scheduling agent, billing agent, and others collaborate on patient cases. Each agent may only be authorized to see a subset of protected health information (PHI) under HIPAA's minimum necessary standard. Without explicit controls, agents can inadvertently leak PHI across role boundaries during message passing.
 
 **RoleGuard** addresses this problem with two complementary components:
 
@@ -26,7 +26,7 @@ The project runs entirely on local infrastructure: **LangGraph** orchestrates th
 │   ┌──────────┐      ┌──────────────┐      ┌──────────┐             │
 │   │  Agent A │ ───► │  RoleGuard   │ ───► │  Agent B │             │
 │   │ (e.g.    │      │  Middleware  │      │ (e.g.    │             │
-│   │  Triage) │      │  (HIPAA      │      │  Billing)│             │
+│   │ Clinical)│      │  (HIPAA      │      │  Billing)│             │
 │   └──────────┘      │   filter)    │      └──────────┘             │
 │                     └──────┬───────┘                                │
 │                            │                                        │
@@ -179,6 +179,7 @@ This project investigates the following questions:
 ```
 roleguard_project/
 ├── README.md              # This file
+├── NOTES.md               # Research log (experiments, decisions, open questions)
 ├── test.py                # Ollama / Llama 3 connectivity smoke test
 ├── env/                   # Python 3.12 virtual environment (not committed)
 │
@@ -190,9 +191,9 @@ roleguard_project/
 │   └── evaluate.py        # Comparative evaluation (filtered vs. unfiltered)
 │
 ├── agents/                # Agent definitions and system prompts
-│   ├── triage.py          # Triage / intake agent
-│   ├── clinical.py        # Clinical reasoning agent
-│   └── billing.py         # Billing / administrative agent
+│   ├── clinical.py        # Clinical retrieval agent (high trust)
+│   ├── scheduling.py      # Scheduling agent (medium trust)
+│   └── billing.py         # Billing / administrative agent (low trust)
 │
 ├── data/
 │   ├── scenarios/         # Synthea synthetic patient scenario files
