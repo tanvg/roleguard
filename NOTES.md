@@ -16,6 +16,16 @@
 - RoleGuard filters based on requesting agent's role, not outgoing messages
 - Dataset: breast cancer patients with chemotherapy, radiation, biopsy procedures
 
+## Decisions
+
+### Decision: Snapshot approach for synthea_loader.py
+- Each patient scenario = most recent Encounter (the "current visit")
+- Diagnosis/medication/procedures associated with that recent period
+- Rationale: matches paper's Jane Doe example, gives clean ground truth 
+  for RoleLeak evaluation, avoids ambiguous violation counting across 
+  10-year history
+- Future work: extend to longitudinal/multi-visit leakage tracking
+
 ## Open Questions
 - How many patients to use for final benchmark? (have 196 total)
 - Should I test with multiple models later?
