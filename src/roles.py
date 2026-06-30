@@ -16,11 +16,13 @@ CATEGORIES = [
 PERMISSIONS = {
     "clinical": {
         "diagnosis",
+        "diagnosis_code",
         "medication",
         "procedure_code",
         "lab_results",
         "imaging",
         "department",
+        "appointment_time",
         "clinician_id",
         "patient_id",
     },
