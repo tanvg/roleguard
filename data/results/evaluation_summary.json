@@ -1,0 +1,156 @@
+{
+  "comparison": {
+    "baseline": {
+      "clinical": {
+        "patient_count": 180,
+        "boundary_violation_rate_pct": 0.0,
+        "avg_violation_count": 0.0,
+        "most_common_violations": []
+      },
+      "scheduling": {
+        "patient_count": 180,
+        "boundary_violation_rate_pct": 100.0,
+        "avg_violation_count": 4.138888888888889,
+        "most_common_violations": [
+          [
+            "diagnosis",
+            180
+          ],
+          [
+            "diagnosis_code",
+            180
+          ],
+          [
+            "medication",
+            146
+          ],
+          [
+            "procedure_code",
+            118
+          ],
+          [
+            "lab_results",
+            118
+          ]
+        ]
+      },
+      "billing": {
+        "patient_count": 180,
+        "boundary_violation_rate_pct": 100.0,
+        "avg_violation_count": 5.483333333333333,
+        "most_common_violations": [
+          [
+            "diagnosis",
+            180
+          ],
+          [
+            "department",
+            180
+          ],
+          [
+            "appointment_time",
+            180
+          ],
+          [
+            "clinician_id",
+            180
+          ],
+          [
+            "medication",
+            146
+          ]
+        ]
+      }
+    },
+    "roleguard": {
+      "clinical": {
+        "patient_count": 180,
+        "boundary_violation_rate_pct": 0.0,
+        "avg_violation_count": 0.0,
+        "most_common_violations": [],
+        "note": "0% violations verified deterministically across all 180 patients"
+      },
+      "scheduling": {
+        "patient_count": 180,
+        "boundary_violation_rate_pct": 0.0,
+        "avg_violation_count": 0.0,
+        "most_common_violations": [],
+        "note": "0% violations verified deterministically across all 180 patients"
+      },
+      "billing": {
+        "patient_count": 180,
+        "boundary_violation_rate_pct": 0.0,
+        "avg_violation_count": 0.0,
+        "most_common_violations": [],
+        "note": "0% violations verified deterministically across all 180 patients"
+      }
+    }
+  },
+  "filter_rates": {
+    "clinical": {
+      "patient_count": 5,
+      "avg_filter_rate": 0.0,
+      "avg_categories_passed": 8.6,
+      "avg_categories_blocked": 0.0
+    },
+    "scheduling": {
+      "patient_count": 5,
+      "avg_filter_rate": 0.5333333333333334,
+      "avg_categories_passed": 4.0,
+      "avg_categories_blocked": 4.6
+    },
+    "billing": {
+      "patient_count": 5,
+      "avg_filter_rate": 0.675,
+      "avg_categories_passed": 2.8,
+      "avg_categories_blocked": 5.8
+    }
+  },
+  "pareto": [
+    {
+      "threshold": 0.0,
+      "label": "0.0 (strict/RoleGuard)",
+      "violation_rate": 0.0,
+      "task_completion": 1.0,
+      "filter_rate": 1.0,
+      "evaluations": 540,
+      "violation_evaluations": 0
+    },
+    {
+      "threshold": 0.25,
+      "label": "0.25",
+      "violation_rate": 0.48518518518518516,
+      "task_completion": 1.0,
+      "filter_rate": 0.75,
+      "evaluations": 540,
+      "violation_evaluations": 262
+    },
+    {
+      "threshold": 0.5,
+      "label": "0.50",
+      "violation_rate": 0.6351851851851852,
+      "task_completion": 1.0,
+      "filter_rate": 0.5,
+      "evaluations": 540,
+      "violation_evaluations": 343
+    },
+    {
+      "threshold": 0.75,
+      "label": "0.75",
+      "violation_rate": 0.6666666666666666,
+      "task_completion": 1.0,
+      "filter_rate": 0.25,
+      "evaluations": 540,
+      "violation_evaluations": 360
+    },
+    {
+      "threshold": 1.0,
+      "label": "1.0 (baseline/no filter)",
+      "violation_rate": 0.6666666666666666,
+      "task_completion": 1.0,
+      "filter_rate": 0.0,
+      "evaluations": 540,
+      "violation_evaluations": 360
+    }
+  ]
+}
