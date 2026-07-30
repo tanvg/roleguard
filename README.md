@@ -4,67 +4,108 @@ Privacy-preserving multi-agent LLM pipelines for healthcare. RoleGuard studies h
 
 ## Project Overview
 
-Healthcare organizations are increasingly adopting multi-agent LLM systems—where a clinical retrieval agent, scheduling agent, billing agent, and others collaborate on patient cases. Each agent may only be authorized to see a subset of protected health information (PHI) under HIPAA's minimum necessary standard. Without explicit controls, agents can inadvertently leak PHI across role boundaries during message passing.
+Healthcare organizations are increasingly adopting multi-agent LLM systems—where a clinical agent, scheduling agent, billing agent, and others collaborate on patient cases via natural language messages. Each agent may only be authorized to see a subset of protected health information (PHI) under HIPAA's minimum necessary standard. Without explicit controls, agents can inadvertently leak PHI across role boundaries during message passing.
 
 **RoleGuard** addresses this problem with two complementary components:
 
 | Component | Purpose |
 |-----------|---------|
-| **RoleLeak** | A benchmark that measures privacy leakage at every inter-agent boundary in a LangGraph pipeline |
-| **RoleGuard** | Middleware that filters inter-agent messages based on HIPAA role permissions before they reach the next agent |
+| **RoleLeak** | A two-tier benchmark that measures privacy leakage at every inter-agent boundary (structured + natural language) |
+| **RoleGuard** | Inference-time middleware that filters natural language handoffs using an LLM extract-and-rewrite process based on HIPAA role permissions |
 
-The project runs entirely on local infrastructure: **LangGraph** orchestrates the agent pipeline, **Llama 3** (via **Ollama**) powers inference, and **Synthea** synthetic patient data provides realistic but non-identifying test cases. All development and evaluation run on an **Ubuntu VM** with **Python 3.12**.
+The project runs entirely on local infrastructure: **LangGraph** orchestrates a sequential agent pipeline, **Llama 3** (via **Ollama**) powers inference, and **mCODE STU1** synthetic breast cancer FHIR records provide realistic but non-identifying test cases. All development and evaluation run on an **Ubuntu VM** with **Python 3.12**.
 
 ## Architecture
 
 ```
-                    ┌─────────────────────────┐
-                    │   Patient Data (FHIR)   │
-                    │  mCODE Breast Cancer    │
-                    └───────────┬─────────────┘
-                                │
-                                ▼
-                    ┌─────────────────────────┐
-                    │       RoleGuard         │
-                    │  (HIPAA role filter)    │
-                    └───────────┬─────────────┘
-                                │
-            ┌───────────────────┼───────────────────┐
-            │                   │                   │
-            ▼                   ▼                   ▼
-    ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
-    │ Clinical Agent│   │Scheduling Agent│   │ Billing Agent │
-    │ (high trust)  │   │ (medium trust) │   │ (low trust)   │
-    └───────┬───────┘   └───────┬───────┘   └───────┬───────┘
-            │                   │                   │
-            └───────────────────┼───────────────────┘
-                                │
-                                ▼
-                    ┌─────────────────────────┐
-                    │        RoleLeak         │
-                    │  measures received vs.  │
-                    │   permitted per agent   │
-                    └─────────────────────────┘
+ User Query
+     │
+     ▼
+┌──────────────┐
+│ Orchestrator │  (LLM decomposes query into subtasks)
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐     FHIR patient data
+│   Clinical   │◄──── (RoleGuard structured filter:
+│    Agent     │      get_permitted_only)
+└──────┬───────┘
+       │ clinical_output (natural language)
+       ▼
+┌──────────────┐
+│  RoleGuard   │  extract PHI categories → rewrite permitted-only text
+└──────┬───────┘
+       │ scheduling_input (dept, time, clinician)
+       ▼
+┌──────────────┐
+│  Scheduling  │
+│    Agent     │
+└──────┬───────┘
+       │ clinical_output + scheduling_output
+       ▼
+┌──────────────┐
+│  RoleGuard   │  extract → rewrite for billing permissions
+└──────┬───────┘
+       │ billing_input (codes + patient_id)
+       ▼
+┌──────────────┐
+│   Billing    │
+│    Agent     │
+└──────┬───────┘
+       │
+       ▼
+   Results + RoleLeak measurements
 ```
 
 **Pipeline flow:**
 
-- Each agent requests information from RoleGuard
-- RoleGuard checks the requesting agent's role
-- RoleGuard returns ONLY permitted information to that agent
-- **Clinical agent** (high trust): sees diagnosis, medication, procedures, lab results
-- **Scheduling agent** (medium trust): sees only department, appointment time, clinician id
-- **Billing agent** (low trust): sees only procedure code, insurance id
-- **RoleLeak** measures what each agent receives vs what it should get
+1. **Orchestrator** (LLM) decomposes the user query into clinical, scheduling, and billing subtasks — no patient data access.
+2. **Clinical agent** reads RoleGuard-filtered structured patient data and produces a natural language care coordination summary.
+3. **RoleGuard** intercepts clinical output text: extracts PHI categories present, then rewrites the text keeping only categories permitted for scheduling.
+4. **Scheduling agent** receives filtered text (department, appointment time, clinician) and produces a calendar entry.
+5. **RoleGuard** intercepts combined clinical + scheduling text and rewrites for billing permissions.
+6. **Billing agent** receives filtered text (diagnosis/procedure codes + patient ID) and produces an insurance claim.
+7. **RoleLeak** measures leakage at each boundary before and after filtering.
+
+### RoleGuard (core contribution)
+
+- Inference-time middleware — no retraining required
+- Two-step LLM process: (1) extract PHI categories from text, (2) rewrite text keeping only permitted categories
+- Model-agnostic: works with any underlying LLM
+- Operates on natural language text, not structured data
+- Code categories (`diagnosis_code`, `procedure_code`) keep only bare codes, not free-text labels
+
+### RoleLeak (benchmark)
+
+- **Tier 1:** Deterministic boundary measurement on structured data (received categories vs. `roles.py` permissions)
+- **Tier 2:** LLM judge detects PHI categories surfaced in natural language text
+- Measures leakage before and after RoleGuard filtering
+- Runs in **baseline** mode (no filtering) and **protected** mode (RoleGuard active)
+
+### Two modes
+
+| Mode | Behavior |
+|------|----------|
+| **Baseline** | No RoleGuard filtering; downstream agents receive full PHI text from upstream outputs |
+| **Protected** | RoleGuard active at every inter-agent text boundary |
+
+### Agent trust levels (`src/roles.py`)
+
+- **Clinical** (high trust): diagnosis, diagnosis_code, medication, procedure_code, lab_results, imaging, department, appointment_time, clinician_id, patient_id
+- **Scheduling** (medium trust): department, appointment_time, clinician_id, patient_id
+- **Billing** (low trust): diagnosis_code, procedure_code, patient_id
 
 ## Dataset
 
 - **Source:** mCODE STU1 Synthetic Breast Cancer Records (MITRE Corporation)
-- **Total patients:** 196 (180 female, 16 male)
+- **Breast cancer cohort:** 180 patients verified (178 female + 2 male)
 - **Diagnosis:** Malignant neoplasm of breast
 - **Procedures:** Chemotherapy, radiation therapy, biopsy, lumpectomy
-- **Format:** FHIR R4 JSON
+- **Format:** FHIR R4 JSON (lifetime longitudinal records)
+- **Snapshot approach:** most recent oncology-related encounter per patient (not full 10-year history)
 - **Download:** https://confluence.hl7.org/display/COD/mCODE+Test+Data
+
+Place extracted FHIR files in `data/scenarios/all_patients/`.
 
 ## Setup Instructions
 
@@ -95,40 +136,27 @@ source env/bin/activate
 pip install langgraph langchain-ollama langchain-core python-dotenv pyyaml
 ```
 
-> The project may also use `langchain-groq` for optional cloud-based comparison experiments. Install only what your configuration requires.
-
 ### 4. Install and pull the Llama 3 model via Ollama
 
 ```bash
-# Install Ollama (if not already installed)
 curl -fsSL https://ollama.com/install.sh | sh
-
-# Start the Ollama service
 ollama serve &
-
-# Pull the model
 ollama pull llama3
 ```
 
-Verify the model is available:
+Verify:
 
 ```bash
 ollama list
 # Expected: llama3:latest
 ```
 
-### 5. Obtain the Synthea synthetic patient data
+### 5. Obtain patient data
 
-Download or generate Synthea FHIR/CSV exports and place scenario files in `data/scenarios/`. Synthea produces fully synthetic patients with no real PHI, making it safe for privacy research.
-
-- Synthea project: https://github.com/synthetichealth/synthea
-- Place one scenario per file (e.g., `data/scenarios/patient_001.json`)
-
-For this project:
 Download the mCODE STU1 breast cancer dataset from:
 https://confluence.hl7.org/display/COD/mCODE+Test+Data
 
-Place the extracted FHIR files in `data/scenarios/all_patients/`
+Place extracted FHIR JSON files in `data/scenarios/all_patients/`.
 
 ### 6. Verify the environment
 
@@ -147,53 +175,78 @@ source env/bin/activate
 python test.py
 ```
 
-### Run the RoleLeak benchmark (baseline — no filtering)
+### Inspect role permissions
 
-Measure privacy leakage across all inter-agent boundaries without RoleGuard middleware:
+```bash
+python3 src/roles.py
+```
+
+### Load and inspect patient snapshots
+
+```bash
+python3 src/synthea_loader.py
+```
+
+### Run the sequential LangGraph pipeline (baseline + protected)
+
+Runs one breast cancer patient through both modes and prints full message handoffs and RoleLeak violations:
 
 ```bash
 source env/bin/activate
-python -m src.roleleak --scenario data/scenarios/<patient_file> --output data/results/
+python3 -u src/pipeline.py
 ```
 
-### Run the pipeline with RoleGuard filtering
-
-Execute the full privacy-preserving pipeline with HIPAA role enforcement at each boundary:
+### Run RoleLeak Tier 1 (deterministic, all 180 patients)
 
 ```bash
-source env/bin/activate
-python -m src.pipeline --scenario data/scenarios/<patient_file> --guard enabled --output data/results/
+python3 -c "
+from src.roleleak import run_tier1_only
+from src.synthea_loader import load_all_patients
+from pathlib import Path
+patients = load_all_patients('data/scenarios/all_patients')['breast_cancer']
+run_tier1_only(patients, agents={}, llm=None,
+               output_file='data/results/roleleak_tier1.jsonl')
+"
 ```
 
-### Compare filtered vs. unfiltered leakage
-
-Run both modes on the same scenario set to quantify RoleGuard's reduction in PHI leakage:
+Or via the module `__main__` (Tier 1 all patients, then Tier 1+2 sample):
 
 ```bash
-source env/bin/activate
-python -m src.evaluate --scenarios data/scenarios/ --output data/results/comparison.json
+python3 src/roleleak.py
 ```
 
-> **Note:** Pipeline entry points (`src/roleleak`, `src/pipeline`, `src/evaluate`) are the intended interfaces. Adjust commands to match the modules as they are implemented.
+### Run RoleGuard protected pipeline benchmark
+
+```bash
+python3 src/roleguard.py
+```
+
+### Generate comparison tables and Pareto curve
+
+```bash
+python3 src/evaluate.py
+```
+
+Results are written to `data/results/` (JSONL + `evaluation_summary.json`).
+
+> **Note:** Full Tier 2 / protected pipeline runs use many LLM calls and are slow on CPU-only VMs. Start with `src/pipeline.py` (one patient) or Tier 1-only benchmarks.
 
 ## Research Questions
 
-This project investigates the following questions:
-
 1. **How much PHI leaks across inter-agent boundaries in unfiltered multi-agent LLM pipelines?**
-   RoleLeak quantifies leakage at each handoff, broken down by PHI category (demographics, diagnoses, medications, billing codes, etc.).
+   RoleLeak quantifies leakage at each handoff (structured Tier 1 and natural language Tier 2).
 
-2. **Can middleware role-based filtering reduce leakage without breaking clinical task performance?**
-   RoleGuard enforces HIPAA minimum-necessary access. We measure the trade-off between privacy protection and downstream agent accuracy.
+2. **Can inference-time role-based text filtering reduce leakage without breaking agent task completion?**
+   RoleGuard extract-and-rewrite enforces HIPAA minimum-necessary access on natural language messages.
 
 3. **Which agent roles and boundary types are most prone to privacy leakage?**
-   The benchmark profiles leakage by source role, destination role, and message type to identify high-risk handoffs.
+   The benchmark profiles leakage by source role, destination role, and message content.
 
-4. **How does local open-weight inference (Llama 3 via Ollama) compare to cloud APIs in privacy-preserving agent design?**
-   Running models locally keeps PHI on-premise, supporting compliance requirements for healthcare deployments.
+4. **How does local open-weight inference (Llama 3 via Ollama) support privacy-preserving agent design?**
+   Running models locally keeps PHI on-premise for healthcare compliance experiments.
 
-5. **Can synthetic patient data (Synthea) reliably substitute for real EHR data in privacy benchmarking?**
-   We evaluate whether Synthea scenarios produce leakage patterns representative of real multi-agent clinical workflows.
+5. **Can synthetic mCODE FHIR data support privacy benchmarking of multi-agent clinical workflows?**
+   Snapshot oncology encounters provide clean ground truth for RoleLeak evaluation.
 
 ## File Structure
 
@@ -204,23 +257,25 @@ roleguard_project/
 ├── test.py                # Ollama / Llama 3 connectivity smoke test
 ├── env/                   # Python 3.12 virtual environment (not committed)
 │
-├── src/                   # Core library and pipeline entry points
-│   ├── pipeline.py        # LangGraph multi-agent healthcare pipeline
-│   ├── roleguard.py       # HIPAA role-based message filter middleware
-│   ├── roleleak.py        # Privacy leakage benchmark and scoring
-│   ├── roles.py           # HIPAA role definitions and permission matrices
-│   └── evaluate.py        # Comparative evaluation (filtered vs. unfiltered)
+├── src/
+│   ├── pipeline.py        # LangGraph sequential pipeline with orchestrator
+│   ├── roleguard.py       # LLM-based text filtering middleware
+│   ├── roleleak.py        # Two-tier leakage benchmark
+│   ├── roles.py           # HIPAA permission sets
+│   ├── synthea_loader.py  # FHIR patient parser
+│   └── evaluate.py        # Comparison tables and Pareto analysis
 │
-├── agents/                # Agent definitions and system prompts
-│   ├── clinical.py        # Clinical retrieval agent (high trust)
-│   ├── scheduling.py      # Scheduling agent (medium trust)
-│   └── billing.py         # Billing / administrative agent (low trust)
+├── agents/
+│   ├── clinical.py        # Clinical coordination agent
+│   ├── scheduling.py      # Scheduling agent
+│   └── billing.py         # Billing agent
 │
 ├── data/
-│   ├── scenarios/         # Synthea synthetic patient scenario files
+│   ├── scenarios/
+│   │   └── all_patients/  # mCODE FHIR R4 patient bundles
 │   └── results/           # Benchmark outputs and evaluation reports
 │
-├── cache/                 # LLM response cache (optional, for reproducibility)
+├── cache/                 # LLM response cache (optional)
 └── logs/                  # Runtime logs and audit trails
 ```
 
@@ -228,10 +283,14 @@ roleguard_project/
 
 | Layer | Technology |
 |-------|------------|
-| Orchestration | [LangGraph](https://github.com/langchain-ai/langgraph) |
+| Orchestration | [LangGraph](https://github.com/langchain-ai/langgraph) sequential `StateGraph` |
 | LLM inference | [Llama 3](https://ollama.com/library/llama3) via [Ollama](https://ollama.com/) |
-| LLM bindings | [langchain-ollama](https://python.langchain.com/docs/integrations/chat/ollama/) |
-| Test data | [Synthea](https://github.com/synthetichealth/synthea) synthetic patients |
+| LLM bindings | [langchain-ollama](https://python.langchain.com/docs/integrations/chat/ollama/) (`ChatOllama`) |
+| Access control | RoleGuard extract-and-rewrite middleware (`src/pipeline.py`, `src/roleguard.py`) |
+| Benchmark | RoleLeak Tier 1 + Tier 2 (`src/roleleak.py`) |
+| Permissions | HIPAA role matrices (`src/roles.py`) |
+| Test data | mCODE STU1 Synthetic Breast Cancer Records (FHIR R4) |
+| Data loader | `src/synthea_loader.py` (snapshot oncology encounters) |
 | Language | Python 3.12 |
 | Platform | Ubuntu VM |
 
