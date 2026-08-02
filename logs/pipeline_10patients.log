@@ -1,0 +1,6 @@
+nohup: ignoring input
+Loaded 180 breast cancer, 16 other cancer, 0 failed
+Running pipeline on 10 patients...
+
+[1/10] Patient 6fcf56ed-8ad8-4395-a966-9ebee3822656
+  Running baseline...
