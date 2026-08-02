@@ -12,21 +12,24 @@ patient = patients[idx]
 roleguard_enabled = True
 
 def get_clinical_response(q, p):
-    prompt = f"""You are a clinical agent with full EHR access.
+    prompt = f"""You are a senior clinical agent with full EHR access.
 Patient ID: {p['patient_id']}
 Diagnosis: {p['diagnosis']} (code: {p['diagnosis_code']})
 Medications: {', '.join(p['medication'])}
 Procedures: {', '.join(p['procedure_code'][:3])}
+Lab Results: {', '.join(p['lab_results'][:3]) if p['lab_results'] else 'None'}
 Department: {p['department']}
 Appointment: {p['appointment_time']}
 Clinician: {p['clinician_id']}
-Billing agent asks: {q}
+Clinical agent asks: {q}
 Answer with full clinical detail."""
     return llm.invoke(prompt).content
 
 while True:
     status = "ON" if roleguard_enabled else "OFF"
     print(f"\n[RoleGuard {status}] Patient: {patient['patient_id'][:8]}...")
+    print(f"You are the CLINICAL AGENT")
+    print(f"Permitted: {PERMISSIONS['clinical']}")
     print("1. Ask question")
     print("2. Toggle RoleGuard ON/OFF")
     print("3. Status")
@@ -41,11 +44,11 @@ while True:
         q = input("Your question > ").strip()
         if not q:
             continue
-        print("Asking clinical agent...")
+        print("Asking senior clinical agent...")
         response = get_clinical_response(q, patient)
         if roleguard_enabled:
             filtered, audit = roleguard_filter_text(
-                response, 'billing', llm, 'clinical → billing')
+                response, 'clinical', llm, 'data source → clinical')
             print("\n--- You receive (RoleGuard ON) ---")
             print(filtered)
             print(f"Blocked: {audit['categories_filtered_out']}")
@@ -61,7 +64,7 @@ while True:
         print(f"RoleGuard : {status}")
         print(f"Patient   : {patient['patient_id']}")
         print(f"Diagnosis : {patient['diagnosis']}")
-        print(f"Permitted : {PERMISSIONS['billing']}")
+        print(f"Permitted : {PERMISSIONS['clinical']}")
     elif choice == '4':
         idx = (idx + 1) % len(patients)
         patient = patients[idx]

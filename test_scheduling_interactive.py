@@ -20,13 +20,15 @@ Procedures: {', '.join(p['procedure_code'][:3])}
 Department: {p['department']}
 Appointment: {p['appointment_time']}
 Clinician: {p['clinician_id']}
-Billing agent asks: {q}
+Scheduling agent asks: {q}
 Answer with full clinical detail."""
     return llm.invoke(prompt).content
 
 while True:
     status = "ON" if roleguard_enabled else "OFF"
     print(f"\n[RoleGuard {status}] Patient: {patient['patient_id'][:8]}...")
+    print(f"You are the SCHEDULING AGENT")
+    print(f"Permitted: {PERMISSIONS['scheduling']}")
     print("1. Ask question")
     print("2. Toggle RoleGuard ON/OFF")
     print("3. Status")
@@ -45,7 +47,7 @@ while True:
         response = get_clinical_response(q, patient)
         if roleguard_enabled:
             filtered, audit = roleguard_filter_text(
-                response, 'billing', llm, 'clinical → billing')
+                response, 'scheduling', llm, 'clinical → scheduling')
             print("\n--- You receive (RoleGuard ON) ---")
             print(filtered)
             print(f"Blocked: {audit['categories_filtered_out']}")
@@ -61,7 +63,7 @@ while True:
         print(f"RoleGuard : {status}")
         print(f"Patient   : {patient['patient_id']}")
         print(f"Diagnosis : {patient['diagnosis']}")
-        print(f"Permitted : {PERMISSIONS['billing']}")
+        print(f"Permitted : {PERMISSIONS['scheduling']}")
     elif choice == '4':
         idx = (idx + 1) % len(patients)
         patient = patients[idx]

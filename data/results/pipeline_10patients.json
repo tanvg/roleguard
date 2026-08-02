@@ -1,0 +1,11 @@
+[
+  {
+    "patient_id": "6fcf56ed-8ad8-4395-a966-9ebee3822656",
+    "baseline_prefilter": 10,
+    "protected_prefilter": 8,
+    "protected_postfilter": 6,
+    "clarification_rounds": 0,
+    "scheduling_input": "Here is the rewritten text keeping ONLY information belonging to the permitted categories for the receiving role 'scheduling':\n\n\u2022 Appointment Time: 2020-03-06T22:02:57-05:00\n\u2022 Clinician ID:\n\u2022 Departme",
+    "billing_input": "Here is the rewritten text:\n\n\u2022 Patient ID: 6fcf56ed-8ad8-4395-a966-9ebee3822656\n\u2022 Diagnosis code: 254837009\n\u2022 Procedure code:\n  \u2022 71651007\n  \u2022 35025007\n  \u2022 90226004\n\u2022 Diagnosis code: 254837009\n\u2022 Patie"
+  }
+]
