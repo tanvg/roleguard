@@ -82,6 +82,19 @@ def roleguard_filter_text(
         "You are a PHI category extractor. Identify which of the following "
         "categories are present in the text.\n\n"
         f"Categories: {json.dumps(CATEGORIES)}\n\n"
+        "Category definitions for extraction:\n"
+        "- diagnosis: disease name, condition, disorder (e.g. 'breast cancer', "
+        "'malignant neoplasm', 'disorder')\n"
+        "- diagnosis_code: SNOMED or ICD code number (e.g. '254837009', 'C50.9')\n"
+        "- medication: drug name, dosage (e.g. 'Tamoxifen 20mg', 'Lorazepam')\n"
+        "- procedure_code: procedure code number or procedure name "
+        "(e.g. '19301', '71651007', 'lumpectomy', 'mammography')\n"
+        "- clinician_id: doctor name or ID (e.g. 'Dr. Smith', 'Dr. Friesen')\n"
+        "- department: clinical department (e.g. 'Oncology', 'follow-up visit')\n"
+        "- appointment_time: date and time of appointment\n"
+        "- patient_id: patient identifier UUID or ID number\n"
+        "- lab_results: test results, values, measurements\n"
+        "- imaging: imaging study descriptions\n\n"
         f"Text:\n{text}\n\n"
         "Respond with JSON only:\n"
         '{"categories_found": ["category_name"]}\n'
@@ -104,12 +117,34 @@ def roleguard_filter_text(
         "below keeping ONLY information belonging to these permitted categories "
         f"for the receiving role '{receiving_role}': {json.dumps(permitted)}.\n\n"
         "Rules:\n"
-        "- Preserve all permitted information accurately.\n"
+        "- Preserve all permitted information accurately with clear semantic labels.\n"
+        "- Keep permitted codes clearly labeled with their category name, for example:\n"
+        "  'Diagnosis code: 254837009' not just '254837009'\n"
+        "  'Procedure code: 71651007' not just '71651007'\n"
+        "  'Patient ID: 6fcf56ed-...' not just the ID alone\n"
+        "- Keep permitted fields in a clean structured format (bullet list or labeled lines).\n"
         "- Remove all non-permitted PHI completely.\n"
-        "- When a permitted category is a code (e.g. diagnosis_code, procedure_code), "
-        "include ONLY the code itself, not any accompanying text description or label. "
-        "For example: include '254837009' but not 'Malignant neoplasm of breast'.\n"
-        "- Return only the rewritten text, no commentary.\n\n"
+        "- For code categories (diagnosis_code, procedure_code), include the code value "
+        "with its label, but do NOT include free-text disease names or procedure "
+        "descriptions (e.g. include 'Diagnosis code: 254837009' but not "
+        "'Malignant neoplasm of breast').\n"
+        "- Do not use category names as values. If a value is unknown or unavailable, "
+        "omit that field entirely rather than using the category name as a placeholder.\n"
+        "- Do NOT use placeholder text like 'procedure_code', '[unknown]', "
+        "'[insert date]', or '[insert time]' as a value. If the real value is not "
+        "in the original text, omit the field.\n"
+        "- Do not write any preamble or commentary (no 'Here is the rewritten text'). "
+        "Return only the filtered content.\n"
+        "- Do not repeat category names as empty entries. "
+        "Only include a field if it has an actual value from the original text. "
+        "If a category appears multiple times in the original text, "
+        "include it only once with its most complete value.\n"
+        "- SNOMED codes (large numbers like 254837009) are diagnosis_code. "
+        "CPT/procedure codes may also be numbers (e.g. 71651007, 35025007). "
+        "When in doubt about whether a code is diagnosis_code or procedure_code, "
+        "use the surrounding context (e.g. 'Mammography' = procedure_code, "
+        "'Malignant neoplasm' = diagnosis_code). "
+        "Label each code correctly based on context.\n\n"
         f"Original text:\n{text}"
     )
     rewrite_response = llm.invoke(rewrite_prompt)
@@ -141,21 +176,46 @@ def _filter_or_passthrough(
     return roleguard_filter_text(text, receiving_role, llm, source_label=source_label)
 
 
-def _record_prefilter_violation(
+def _record_violation(
     text: str,
     receiving_role: str,
     llm,
     source_label: str,
     violations: list,
+    phase: str,
 ) -> None:
+    """Record RoleLeak Tier-2 measurement for pre_filter or post_filter text."""
     measurement = measure_output_leakage(text, receiving_role, llm)
     violations.append(
         {
             "boundary": source_label,
-            "stage": "pre_filter",
+            "phase": phase,
             "measurement": measurement,
         }
     )
+
+
+def _apply_boundary_filter(
+    text: str,
+    receiving_role: str,
+    llm,
+    source_label: str,
+    baseline_mode: bool,
+    violations: list,
+    audits: list,
+) -> tuple[str, dict]:
+    """
+    Filter text for receiving_role and record both pre-filter and post-filter leakage.
+    """
+    _record_violation(text, receiving_role, llm, source_label, violations, phase="pre_filter")
+    filtered_text, audit = _filter_or_passthrough(
+        text, receiving_role, llm, source_label, baseline_mode
+    )
+    audits.append(audit)
+    _record_violation(
+        filtered_text, receiving_role, llm, source_label, violations, phase="post_filter"
+    )
+    return filtered_text, audit
 
 
 def orchestrator_node(state: PipelineState, llm) -> dict:
@@ -236,14 +296,15 @@ def scheduling_node(state: PipelineState, llm, baseline_mode: bool = False) -> d
     violations = _copy_list(state, "roleleak_violations")
     messages = _copy_list(state, "messages")
 
-    _record_prefilter_violation(
-        clinical_output, "scheduling", llm, source_label, violations
+    scheduling_input, audit = _apply_boundary_filter(
+        clinical_output,
+        "scheduling",
+        llm,
+        source_label,
+        baseline_mode,
+        violations,
+        audits,
     )
-
-    scheduling_input, audit = _filter_or_passthrough(
-        clinical_output, "scheduling", llm, source_label, baseline_mode
-    )
-    audits.append(audit)
 
     prompt = (
         "You are a scheduling agent.\n\n"
@@ -304,13 +365,15 @@ def billing_node(state: PipelineState, llm, baseline_mode: bool = False) -> dict
 
         # Boundary: clinical → billing (direct)
         clinical_label = "clinical → billing"
-        _record_prefilter_violation(
-            clinical_output, "billing", llm, clinical_label, violations
+        clinical_for_billing, clinical_audit = _apply_boundary_filter(
+            clinical_output,
+            "billing",
+            llm,
+            clinical_label,
+            baseline_mode,
+            violations,
+            audits,
         )
-        clinical_for_billing, clinical_audit = _filter_or_passthrough(
-            clinical_output, "billing", llm, clinical_label, baseline_mode
-        )
-        audits.append(clinical_audit)
         messages.append(
             {
                 "boundary": clinical_label,
@@ -323,13 +386,15 @@ def billing_node(state: PipelineState, llm, baseline_mode: bool = False) -> dict
 
         # Boundary: scheduling → billing
         scheduling_label = "scheduling → billing"
-        _record_prefilter_violation(
-            scheduling_output, "billing", llm, scheduling_label, violations
+        scheduling_for_billing, scheduling_audit = _apply_boundary_filter(
+            scheduling_output,
+            "billing",
+            llm,
+            scheduling_label,
+            baseline_mode,
+            violations,
+            audits,
         )
-        scheduling_for_billing, scheduling_audit = _filter_or_passthrough(
-            scheduling_output, "billing", llm, scheduling_label, baseline_mode
-        )
-        audits.append(scheduling_audit)
         messages.append(
             {
                 "boundary": scheduling_label,
@@ -417,13 +482,15 @@ def clarification_filter_node(state: PipelineState, llm, baseline_mode: bool = F
         # clinical → billing (clarification response)
         source_label = "clinical → billing (clarification)"
         clinical_output = state["clinical_output"]
-        _record_prefilter_violation(
-            clinical_output, "billing", llm, source_label, violations
+        filtered, audit = _apply_boundary_filter(
+            clinical_output,
+            "billing",
+            llm,
+            source_label,
+            baseline_mode,
+            violations,
+            audits,
         )
-        filtered, audit = _filter_or_passthrough(
-            clinical_output, "billing", llm, source_label, baseline_mode
-        )
-        audits.append(audit)
         messages.append(
             {
                 "boundary": source_label,
@@ -444,14 +511,13 @@ def clarification_filter_node(state: PipelineState, llm, baseline_mode: bool = F
     # billing → clinical (clarification request)
     source_label = "billing → clinical (clarification request)"
     clarification_request = state.get("clarification_request") or ""
-    measurement = measure_output_leakage(clarification_request, "billing", llm)
-    violations.append(
-        {
-            "boundary": source_label,
-            "stage": "request_content",
-            "measurement": measurement,
-            "note": "flag if billing asks for PHI outside its permitted scope",
-        }
+    _record_violation(
+        clarification_request,
+        "billing",
+        llm,
+        source_label,
+        violations,
+        phase="pre_filter",
     )
     messages.append(
         {
@@ -630,6 +696,7 @@ def _print_mode_result(label: str, state: PipelineState) -> None:
         measurement = item.get("measurement") or {}
         print(
             f"  boundary={item.get('boundary')} "
+            f"phase={item.get('phase')} "
             f"has_violation={measurement.get('has_output_violation')} "
             f"categories={measurement.get('non_permitted_categories_mentioned')} "
             f"evidence={measurement.get('evidence')}"
