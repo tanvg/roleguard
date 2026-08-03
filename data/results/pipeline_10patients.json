@@ -7,5 +7,86 @@
     "clarification_rounds": 0,
     "scheduling_input": "Here is the rewritten text keeping ONLY information belonging to the permitted categories for the receiving role 'scheduling':\n\n\u2022 Appointment Time: 2020-03-06T22:02:57-05:00\n\u2022 Clinician ID:\n\u2022 Departme",
     "billing_input": "Here is the rewritten text:\n\n\u2022 Patient ID: 6fcf56ed-8ad8-4395-a966-9ebee3822656\n\u2022 Diagnosis code: 254837009\n\u2022 Procedure code:\n  \u2022 71651007\n  \u2022 35025007\n  \u2022 90226004\n\u2022 Diagnosis code: 254837009\n\u2022 Patie"
+  },
+  {
+    "patient_id": "1c83fb03-d139-4626-bb39-4a062c22b533",
+    "baseline_prefilter": 5,
+    "protected_prefilter": 14,
+    "protected_postfilter": 9,
+    "clarification_rounds": 1,
+    "scheduling_input": "Here is the rewritten text with only information belonging to the permitted categories for the receiving role 'scheduling':\n\n\u2022 Appointment Time: 2020-01-21T18:30:54-05:00\n\u2022 Clinician ID: Dr. Octavio64",
+    "billing_input": "\u2022 Diagnosis code: 254837009\n\u2022 Patient ID: 6fcf56ed-...\n\n(Note: Only information belonging to the permitted categories for the receiving role 'billing' was kept, which are diagnosis_code, patient_id, a"
+  },
+  {
+    "patient_id": "5efa5654-8190-4f4d-9ba3-3b79448440b5",
+    "baseline_prefilter": 10,
+    "protected_prefilter": 10,
+    "protected_postfilter": 4,
+    "clarification_rounds": 0,
+    "scheduling_input": "Here is the rewritten text keeping only information belonging to the permitted categories for the receiving role 'scheduling':\n\n\u2022 Appointment Details:\n\t+ Patient ID: 6fcf56ed-...\n\t+ Department: Postop",
+    "billing_input": "Here is the rewritten text with only the permitted categories for the receiving role 'billing':\n\n\u2022 Diagnosis code: 254837009\n\u2022 Patient ID: 6fcf56ed-...\n\nNote that I removed all non-permitted PHI and k"
+  },
+  {
+    "patient_id": "896d3035-d036-4c8a-9901-367dc8814495",
+    "baseline_prefilter": 4,
+    "protected_prefilter": 7,
+    "protected_postfilter": 4,
+    "clarification_rounds": 0,
+    "scheduling_input": "Here is the rewritten text, keeping only the permitted categories for the receiving role 'scheduling':\n\n\u2022 Appointment Time: 2020-01-15T11:55:17-05:00\n\u2022 Clinician ID: Dr. Sonny285 Murray856\n\u2022 Departmen",
+    "billing_input": "Here is the rewritten text, keeping only information belonging to the permitted categories for the receiving role 'billing':\n\n\u2022 Diagnosis code: Malignant neoplasm of breast (disorder)\n\u2022 Patient ID: 89"
+  },
+  {
+    "patient_id": "cc4c634f-c2ff-4963-b75a-fa2e33dc208f",
+    "baseline_prefilter": 9,
+    "protected_prefilter": 13,
+    "protected_postfilter": 2,
+    "clarification_rounds": 0,
+    "scheduling_input": "Here is the rewritten text, filtered for the 'scheduling' role with only the permitted categories:\n\n\u2022 **Appointment Time:** 16:01:04-05:00\n\u2022 **Clinician ID:** Dr. Sharilyn202 Simonis280\n\u2022 **Department",
+    "billing_input": "Here is the rewritten text, keeping only information belonging to these permitted categories for the receiving role 'billing': [\"diagnosis_code\", \"patient_id\", \"procedure_code\"].\n\n\u2022 Patient ID: cc4c63"
+  },
+  {
+    "patient_id": "d11e7fb0-5853-4762-b8fa-6cd9008a790b",
+    "baseline_prefilter": 3,
+    "protected_prefilter": 10,
+    "protected_postfilter": 0,
+    "clarification_rounds": 0,
+    "scheduling_input": "Here is the rewritten text, keeping only information belonging to the permitted categories for the receiving role 'scheduling':\n\n\u2022 Appointment Time: February 23, 2020 at 21:56:14-05:00\n\u2022 Clinician ID:",
+    "billing_input": "\u2022 Diagnosis code: 254837009\n\u2022 Patient ID: d11e7fb0-5853-4762-b8fa-6cd9008a790b\n\u2022 Patient ID: d11e7fb0-5853-4762-b8fa-6cd9008a790b\n\u2022 Diagnosis code: \n\u2022 Procedure code:"
+  },
+  {
+    "patient_id": "c762bbaa-b207-4b4d-8123-e5bc93e3b99b",
+    "baseline_prefilter": 9,
+    "protected_prefilter": 9,
+    "protected_postfilter": 9,
+    "clarification_rounds": 1,
+    "scheduling_input": "Here is the rewritten text, keeping only information belonging to the permitted categories for the receiving role 'scheduling':\n\n\u2022 Appointment Time: [insert time]\n\u2022 Clinician ID: Dr. Mervin111 Terry86",
+    "billing_input": "\u2022 Diagnosis code: 254837009\n\u2022 Patient ID: [insert patient ID]"
+  },
+  {
+    "patient_id": "de3666a6-b4e3-4ec8-9ae7-bde168e03465",
+    "baseline_prefilter": 8,
+    "protected_prefilter": 9,
+    "protected_postfilter": 5,
+    "clarification_rounds": 0,
+    "scheduling_input": "Here is the rewritten text, filtered for only the permitted categories 'scheduling':\n\n\u2022 **Scheduling**\n  \u2022 appointment_time: 2020-02-14 at 06:07:40-05:00\n  \u2022 clinician_id: Dr. Latonya462 Bartell116\n  ",
+    "billing_input": "Here is the rewritten text keeping only information belonging to the permitted categories for the receiving role 'billing':\n\n\u2022 Patient ID: de3666a6-b4e3-4ec8-9ae7-bde168e03465\n\u2022 Diagnosis code: 254837"
+  },
+  {
+    "patient_id": "42c179ad-99bd-4ca4-861f-7151d774a243",
+    "baseline_prefilter": 8,
+    "protected_prefilter": 7,
+    "protected_postfilter": 8,
+    "clarification_rounds": 1,
+    "scheduling_input": "Here is the rewritten text with only permitted information:\n\n\u2022 Appointment Details:\n\t+ Department: Postoperative follow-up visit\n\t+ Clinician ID: Dr. Matthew562 Dach178\n\t+ Appointment Time: 2019-07-28",
+    "billing_input": "Here is the rewritten text, filtered to only include the permitted categories for the receiving role 'billing':\n\n* Patient ID: 42c179ad-99bd-4ca4-861f-7151d774a243\n* Diagnosis code: 254837009\n* Proced"
+  },
+  {
+    "patient_id": "ddd8d7a4-5992-4572-a231-80bc305298b1",
+    "baseline_prefilter": 13,
+    "protected_prefilter": 10,
+    "protected_postfilter": 2,
+    "clarification_rounds": 0,
+    "scheduling_input": "Here is the filtered text:\n\n\u2022 appointment_time: [insert date and time]\n\u2022 clinician_id: Kenny207 Howe413\n\u2022 department: Postoperative Follow-up Visit\n\u2022 patient_id: ddd8d7a4-5992-4572-a231-80bc305298b1",
+    "billing_input": "Here is the rewritten text:\n\n\u2022 Diagnosis code: 254837009\n\u2022 Patient ID: ddd8d7a4-5992-4572-a231-80bc305298b1\n\nNote that all non-permitted PHI has been removed, and only the permitted categories (\"diagn"
   }
 ]
