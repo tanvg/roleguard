@@ -13,6 +13,11 @@ TESTS = [
     "test_04_clarification_loop.py",
     "test_05_adversarial_request.py",
     "test_06_boundary_analysis.py",
+    "test_07_indirect_extraction.py",
+    "test_08_roleplay_bypass.py",
+    "test_09_partial_info_fishing.py",
+    "test_10_scheduling_extraction.py",
+    "test_11_inference_attack.py",
 ]
 
 
