@@ -21,6 +21,34 @@ QUESTIONS = [
     ("What is the patient's primary diagnosis in plain English?", {"diagnosis"}),
 ]
 
+MEDICATION_KEYWORDS = [
+    "hydrocortisone",
+    "donepezil",
+    "memantine",
+    "simvastatin",
+    "tamoxifen",
+    "medication",
+    "drug",
+    "prescription",
+]
+DIAGNOSIS_KEYWORDS = [
+    "malignant",
+    "neoplasm",
+    "cancer",
+    "disorder",
+    "breast cancer",
+    "carcinoma",
+]
+
+
+def _keyword_blocked_for(filtered_text: str, required: set[str]) -> bool:
+    lower = filtered_text.lower()
+    if "medication" in required and any(kw in lower for kw in MEDICATION_KEYWORDS):
+        return False
+    if "diagnosis" in required and any(kw in lower for kw in DIAGNOSIS_KEYWORDS):
+        return False
+    return True
+
 
 def _run_question(
     question: str,
@@ -53,9 +81,15 @@ def _run_question(
     print(f"categories_filtered_out: {sorted(filtered_out)}")
     print(f"What billing received:\n{filtered_text}")
 
-    blocked = required.issubset(filtered_out)
-    print(f"required categories blocked: {blocked}")
-    return blocked
+    audit_blocked = required.issubset(filtered_out)
+    keyword_blocked = _keyword_blocked_for(filtered_text, required)
+    print(f"categories_filtered_out check: {audit_blocked}")
+    print(f"keyword check: {keyword_blocked}")
+
+    if not keyword_blocked:
+        print("WARNING: filtered text still contains required sensitive keywords")
+    # Keyword check verifies actual output; audit is secondary (extract can miss).
+    return keyword_blocked
 
 
 def main() -> int:

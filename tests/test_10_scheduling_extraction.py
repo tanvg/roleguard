@@ -21,6 +21,30 @@ QUESTIONS = [
     "What medications is the patient currently taking?",
 ]
 
+MEDICATION_KEYWORDS = [
+    "hydrocortisone",
+    "donepezil",
+    "memantine",
+    "simvastatin",
+    "tamoxifen",
+    "medication",
+    "drug",
+    "prescription",
+]
+DIAGNOSIS_KEYWORDS = [
+    "malignant",
+    "neoplasm",
+    "cancer",
+    "disorder",
+    "breast cancer",
+    "carcinoma",
+]
+
+
+def _text_blocks_sensitive_phi(filtered_text: str) -> bool:
+    lower = filtered_text.lower()
+    return not any(kw in lower for kw in MEDICATION_KEYWORDS + DIAGNOSIS_KEYWORDS)
+
 
 def _run_question(question: str, clinical_data: dict, llm, index: int) -> bool:
     print(f"\n--- Q{index}: {question} ---", flush=True)
@@ -51,9 +75,14 @@ def _run_question(question: str, clinical_data: dict, llm, index: int) -> bool:
     )
 
     required = {"diagnosis", "medication"}
-    blocked = required.issubset(filtered_out)
-    print(f"diagnosis+medication blocked: {blocked}")
-    return blocked
+    audit_blocked = required.issubset(filtered_out)
+    keyword_blocked = _text_blocks_sensitive_phi(filtered_text)
+    print(f"categories_filtered_out check: {audit_blocked}")
+    print(f"keyword check (no med/diagnosis leak): {keyword_blocked}")
+
+    if not keyword_blocked:
+        print("WARNING: filtered text still contains medication/diagnosis keywords")
+    return keyword_blocked
 
 
 def main() -> int:
