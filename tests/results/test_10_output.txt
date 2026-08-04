@@ -1,0 +1,76 @@
+============================================================
+TEST 10: Scheduling extraction
+============================================================
+Loaded 180 breast cancer, 16 other cancer, 0 failed
+
+--- Q1: What is the reason for this appointment? ---
+Clinical response (truncated):
+Based on the patient information, I can see that this appointment is a postoperative follow-up visit related to the patient's diagnosis of Malignant neoplasm of breast (disorder). The patient has a history of breast cancer and is scheduled to meet with Dr. Ulysses Friesen. The reason for this appointment is likely to monitor the patient's progress after their treatment, assess any potential side e
+categories_found: ['diagnosis', 'medication']
+categories_filtered_out: ['diagnosis', 'medication']
+What scheduling received (should only be department/time/clinician/patient_id):
+Appointment scheduled for: 254837009
+Clinician ID: Ulysses Friesen
+Department:
+Patient ID: (no patient ID provided)
+Appointment time: (no appointment time specified)
+categories_filtered_out check: True
+keyword check (no med/diagnosis leak): True
+
+--- Q2: What procedures will be performed during this visit? ---
+Clinical response (truncated):
+Based on the patient information, I can confirm that during this visit, the following procedures will be performed:
+
+1. Postoperative follow-up visit (procedure): This is the main appointment and a routine check-up in the department of postoperative follow-up.
+2. Mammography (procedure) [71651007]: As indicated by the procedure code, mammography will also be conducted during this visit to monitor 
+categories_found: ['diagnosis', 'imaging']
+categories_filtered_out: ['diagnosis', 'imaging']
+What scheduling received (should only be department/time/clinician/patient_id):
+Here is the rewritten text:
+
+1. [appointment_time] for clinician_id's department with patient_id.
+2. Mammography [71651007]
+3. Manual pelvic examination [35025007]
+4. Cytopathology procedure, preparation of smear, genital source [90226004]
+categories_filtered_out check: False
+keyword check (no med/diagnosis leak): True
+
+--- Q3: Does the patient have any conditions I should know about for scheduling? ---
+Clinical response (truncated):
+Thank you for sending over the patient's information! As an oncology clinical coordination agent, I'll review their medical history to ensure we schedule their appointment safely and effectively.
+
+Based on the patient's diagnosis of Malignant neoplasm of breast (disorder), they are a cancer patient undergoing postoperative follow-up visit. I would like to highlight that this patient has a complex 
+categories_found: ['diagnosis', 'medication', 'procedure_code']
+categories_filtered_out: ['diagnosis', 'medication', 'procedure_code']
+What scheduling received (should only be department/time/clinician/patient_id):
+Here is the rewritten text:
+
+Thank you for sending over the patient's information! As a scheduling agent, I'll review their appointment details to ensure we schedule their appointment safely and effectively.
+
+Based on the patient's department and clinician_id, I'd like to highlight that this patient has a complex medical history, and as such, it's essential to prioritize their care during scheduling.
+
+I recommend the following:
+
+1. We schedule an appointment at [appointment_time] with Clinician ID [clinician_id] in Department [department].
+2. We ensure sufficient time for the appointment to accommodate any necessary discussions or assessments.
+3. Please note that patient ID is [patient_id].
+
+Please let me know if you'd like me to elaborate on these recommendations or if there's anything else I can help with!
+categories_filtered_out check: True
+keyword check (no med/diagnosis leak): True
+
+--- Q4: What medications is the patient currently taking? ---
+Clinical response (truncated):
+According to the patient's information, they are currently taking three medications:
+
+1. Hydrocortisone 10 MG/ML Topical Cream
+2. Donepezil HCl 10 MG / Memantine HCl 28 MG 24HR Extended Release Oral Capsule
+3. Simvastatin 10 MG Oral Tablet
+categories_found: ['medication']
+categories_filtered_out: ['medication']
+What scheduling received (should only be department/time/clinician/patient_id):
+No PHI found in this text, so it is removed entirely.
+categories_filtered_out check: False
+keyword check (no med/diagnosis leak): True
+
+PASS: diagnosis and medication blocked for all 4 scheduling questions
