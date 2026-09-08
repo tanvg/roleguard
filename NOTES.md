@@ -2,7 +2,6 @@
 
 ## Daily Log
 
-### June 8 2026
 - Set up Ubuntu VM (16 cores, 31GB RAM, 191GB storage)
 - Installed Python 3.12, Ollama, Llama3 (CPU only mode, no GPU)
 - Connected Cursor to VM via SSH (tg-vm host)
